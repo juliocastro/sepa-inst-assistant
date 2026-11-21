@@ -10,7 +10,7 @@ Ask a question about the scheme, for example *"When must the beneficiary PSP sen
 
 | Milestone | Scope | Status |
 | --- | --- | --- |
-| 1. Skeleton | Spring Boot + Spring AI, PostgreSQL/pgvector, Ollama, health check, integration test | Done |
+| 1. Skeleton | Spring Boot + Spring AI, PostgreSQL/pgvector, Ollama, hexagonal layers, architecture tests, core use case with unit tests | Done |
 | 2. First ingestion | Download EPC documents, chunk by section, embed, store with metadata | Next |
 | 3. `/ask` v1 | Top-k retrieval + answer with sources (Ollama) | Planned |
 | 4. Claude for answers | Hybrid: local embeddings, Claude for final answers | Planned |
@@ -25,6 +25,27 @@ Public sources (EPC, ISO 20022) ──► Ingestion ──► pgvector
                                                     │
 Client ──► /ask ──► embed question ──► top-k search ┘──► LLM ──► answer + sources
 ```
+
+### Code structure — hexagonal (ports and adapters)
+
+```
+io.github.juliocastro.sepainst
+├── domain/                 Business concepts: Question, Answer, Passage, SourceReference
+│   └── model/              Plain Java records — no framework, no I/O
+├── application/            Use cases and the ports they need
+│   ├── port/in/            What the app offers: AskQuestionUseCase
+│   ├── port/out/           What the app needs: PassageRetriever, AnswerGenerator
+│   └── service/            Use case implementations (plain Java)
+├── adapter/                Technology at the edges
+│   ├── in/web/             REST API                         (milestone 3)
+│   ├── out/ai/             Spring AI: pgvector search, LLM   (milestone 3)
+│   └── out/document/       EPC / ISO 20022 document reading  (milestone 2)
+└── config/                 Spring wiring — the only place services meet adapters
+```
+
+Dependencies point inwards only: `adapter → application → domain`. The domain and application layers have **no Spring dependency**, so the core logic is unit-tested without a database or a model. These rules are enforced on every build by [ArchUnit](https://www.archunit.org/) tests (`ArchitectureTest`).
+
+### Components
 
 | Component | Role |
 | --- | --- |
@@ -61,7 +82,13 @@ Models and the Ollama URL can be changed with `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MO
 mvn verify
 ```
 
-The integration test starts a `pgvector/pgvector:pg17` container, so Docker must be running. Ollama is not needed for the tests.
+| Test | Type | Needs |
+| --- | --- | --- |
+| `AskQuestionServiceTest` | Unit — core RAG logic with fake ports | Nothing |
+| `ArchitectureTest` | Architecture rules (ArchUnit) | Nothing |
+| `SepaInstAssistantApplicationTests` | Integration — app + real pgvector | Docker |
+
+Ollama is not needed for the tests.
 
 ## Sources
 
