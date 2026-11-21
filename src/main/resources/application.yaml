@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: sepa-inst-assistant
+
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        # Models are pulled manually (see README) so startup never blocks on a large download.
+        pull-model-strategy: never
+      chat:
+        options:
+          model: ${OLLAMA_CHAT_MODEL:qwen3:8b}
+      embedding:
+        options:
+          model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: hnsw
+        distance-type: cosine-distance
+        # Must match the embedding model output size (nomic-embed-text = 768).
+        dimensions: ${EMBEDDING_DIMENSIONS:768}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

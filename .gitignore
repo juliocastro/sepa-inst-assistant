@@ -1,0 +1,21 @@
+# Build
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+
+# Source documents (EPC / ISO 20022) are downloaded locally and never committed:
+# they are public but subject to their publishers' IP rights.
+sources/
+
+# Local secrets
+.env
