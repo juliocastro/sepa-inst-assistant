@@ -23,7 +23,7 @@ import org.testcontainers.utility.DockerImageName;
  * the vector_store table is created and the health endpoint reports UP.
  * Ollama is not needed here: no embedding or chat call is made at startup.
  */
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SepaInstAssistantApplicationTests {
 

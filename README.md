@@ -88,7 +88,15 @@ mvn verify
 | `ArchitectureTest` | Architecture rules (ArchUnit) | Nothing |
 | `SepaInstAssistantApplicationTests` | Integration — app + real pgvector | Docker |
 
-Ollama is not needed for the tests.
+Ollama is not needed for the tests. Without Docker, the integration test is skipped instead of failing.
+
+On Fedora with Podman instead of Docker:
+
+```bash
+systemctl --user enable --now podman.socket
+export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock
+export TESTCONTAINERS_RYUK_DISABLED=true
+```
 
 ## Sources
 
