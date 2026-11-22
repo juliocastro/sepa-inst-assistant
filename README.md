@@ -57,7 +57,7 @@ Dependencies point inwards only: `adapter → application → domain`. The domai
 
 ## Running locally
 
-Requirements: Java 21, Maven 3.9+, Docker.
+Requirements: Java 21+ and Docker. Maven is provided by the wrapper (`./mvnw`).
 
 ```bash
 # 1. Ollama: either run it natively (https://ollama.com) or start it with Docker
@@ -68,7 +68,7 @@ ollama pull nomic-embed-text      # embeddings (768 dimensions)
 ollama pull qwen3:8b              # chat; pick a smaller model if your machine needs it
 
 # 3. Run the app — PostgreSQL/pgvector is started automatically from compose.yaml
-mvn spring-boot:run
+./mvnw spring-boot:run
 
 # 4. Check it
 curl http://localhost:8080/actuator/health
@@ -79,7 +79,7 @@ Models and the Ollama URL can be changed with `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MO
 ## Tests
 
 ```bash
-mvn verify
+./mvnw verify
 ```
 
 | Test | Type | Needs |
