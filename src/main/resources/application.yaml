@@ -31,3 +31,16 @@ management:
   endpoint:
     health:
       show-details: always
+
+sepainst:
+  sources:
+    # Downloaded documents are kept here and never committed (see .gitignore).
+    directory: sources
+    documents:
+      - id: EPC122-16-2025
+        title: EPC122-16 SCT Inst Inter-PSP Implementation Guidelines 2025 v1.0
+        url: https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-11/EPC122-16%20SCT%20Inst%20Inter-PSP%20IG%202025%20V1.0.pdf
+  ingestion:
+    max-chunk-chars: 2000
+    batch-size: 50
+    download-timeout: 60s

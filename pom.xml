@@ -21,6 +21,9 @@
         <java.version>21</java.version>
         <spring-ai.version>2.1.0</spring-ai.version>
         <archunit.version>1.5.1</archunit.version>
+        <pdfbox.version>3.0.8</pdfbox.version>
+        <!-- Filled in by maven-dependency-plugin:properties; extended below for the Mockito agent -->
+        <argLine></argLine>
     </properties>
 
     <dependencyManagement>
@@ -67,6 +70,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- PDF text extraction -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+        </dependency>
+
         <!-- Starts compose.yaml automatically on `mvn spring-boot:run` -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -109,6 +119,25 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Load Mockito as a Java agent instead of letting it self-attach (deprecated since JDK 21) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>
