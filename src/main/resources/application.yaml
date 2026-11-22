@@ -3,24 +3,26 @@ spring:
     name: sepa-inst-assistant
 
   ai:
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-      init:
-        # Models are pulled manually (see README) so startup never blocks on a large download.
-        pull-model-strategy: never
-      chat:
-        options:
-          model: ${OLLAMA_CHAT_MODEL:qwen3:8b}
+    model:
       embedding:
-        options:
-          model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+        text: google-genai
+    google:
+      genai:
+        embedding:
+          # Free key from Google AI Studio (https://aistudio.google.com). Never commit it.
+          api-key: ${GEMINI_API_KEY:}
+          text:
+            model: gemini-embedding-001
+            # gemini-embedding-001 defaults to 3072 dimensions; 768 is one of Google's recommended
+            # sizes and stays within pgvector's HNSW index limit.
+            dimensions: ${EMBEDDING_DIMENSIONS:768}
 
     vectorstore:
       pgvector:
         initialize-schema: true
         index-type: hnsw
         distance-type: cosine-distance
-        # Must match the embedding model output size (nomic-embed-text = 768).
+        # Must match the embedding output size configured above.
         dimensions: ${EMBEDDING_DIMENSIONS:768}
 
 management:
@@ -42,5 +44,8 @@ sepainst:
         url: https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-11/EPC122-16%20SCT%20Inst%20Inter-PSP%20IG%202025%20V1.0.pdf
   ingestion:
     max-chunk-chars: 2000
-    batch-size: 50
+    # Gemini free tier allows about 30k tokens per minute: ~20 chunks of 2,000 characters,
+    # then a pause. With a paid key, raise the batch size and set the pause to 0s.
+    batch-size: 20
+    pause-between-batches: 30s
     download-timeout: 60s

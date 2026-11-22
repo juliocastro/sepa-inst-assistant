@@ -48,7 +48,8 @@ class ApplicationConfiguration {
 
     @Bean
     PassageStore passageStore(VectorStore vectorStore, SepaInstProperties properties) {
-        return new VectorStorePassageStore(vectorStore, properties.ingestion().batchSize());
+        return new VectorStorePassageStore(vectorStore, properties.ingestion().batchSize(),
+                properties.ingestion().pauseBetweenBatches());
     }
 
     // --- domain and use cases ------------------------------------------------------------

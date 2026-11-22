@@ -24,11 +24,13 @@ public record SepaInstProperties(@DefaultValue Sources sources, @DefaultValue In
 
     /**
      * @param maxChunkChars   maximum size of a chunk, in characters
-     * @param batchSize       chunks embedded and stored per batch
-     * @param downloadTimeout timeout for downloading a source document
+     * @param batchSize           chunks embedded and stored per batch
+     * @param pauseBetweenBatches pause between batches, to respect embedding API rate limits
+     * @param downloadTimeout     timeout for downloading a source document
      */
     public record Ingestion(@DefaultValue("2000") int maxChunkChars,
-                            @DefaultValue("50") int batchSize,
+                            @DefaultValue("20") int batchSize,
+                            @DefaultValue("0s") Duration pauseBetweenBatches,
                             @DefaultValue("60s") Duration downloadTimeout) {
     }
 }

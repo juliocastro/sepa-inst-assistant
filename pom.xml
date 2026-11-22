@@ -49,10 +49,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Spring AI: local models (chat + embeddings) via Ollama -->
+        <!-- Spring AI: embeddings with Google Gemini (gemini-embedding-001) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-ollama</artifactId>
+            <artifactId>spring-ai-starter-model-google-genai-embedding</artifactId>
         </dependency>
 
         <!-- Spring AI: vector store on PostgreSQL + pgvector -->

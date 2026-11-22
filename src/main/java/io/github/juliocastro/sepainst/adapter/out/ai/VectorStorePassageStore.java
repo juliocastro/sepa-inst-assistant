@@ -1,6 +1,7 @@
 package io.github.juliocastro.sepainst.adapter.out.ai;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,8 @@ import io.github.juliocastro.sepainst.domain.model.DocumentChunk;
 /**
  * Stores chunks in a Spring AI {@link VectorStore} (pgvector). The store computes the embeddings.
  * Chunk ids are derived from document id + chunk index, so re-ingesting a document is idempotent.
+ * Chunks are sent in batches with an optional pause between them, to stay within the rate limits
+ * of hosted embedding APIs (e.g. the Gemini free tier).
  */
 public class VectorStorePassageStore implements PassageStore {
 
@@ -32,11 +35,16 @@ public class VectorStorePassageStore implements PassageStore {
 
     private final VectorStore vectorStore;
     private final int batchSize;
+    private final Duration pauseBetweenBatches;
 
-    public VectorStorePassageStore(VectorStore vectorStore, int batchSize) {
+    public VectorStorePassageStore(VectorStore vectorStore, int batchSize, Duration pauseBetweenBatches) {
         this.vectorStore = Objects.requireNonNull(vectorStore, "vectorStore must not be null");
+        this.pauseBetweenBatches = Objects.requireNonNull(pauseBetweenBatches, "pauseBetweenBatches must not be null");
         if (batchSize < 1) {
             throw new IllegalArgumentException("batchSize must be at least 1");
+        }
+        if (pauseBetweenBatches.isNegative()) {
+            throw new IllegalArgumentException("pauseBetweenBatches must not be negative");
         }
         this.batchSize = batchSize;
     }
@@ -47,9 +55,24 @@ public class VectorStorePassageStore implements PassageStore {
 
         List<Document> documents = chunks.stream().map(chunk -> toDocument(documentId, chunk)).toList();
         for (int from = 0; from < documents.size(); from += batchSize) {
+            if (from > 0) {
+                pause();
+            }
             int to = Math.min(documents.size(), from + batchSize);
             vectorStore.add(documents.subList(from, to));
             log.info("Embedded and stored {}/{} chunks of {}", to, documents.size(), documentId);
+        }
+    }
+
+    private void pause() {
+        if (pauseBetweenBatches.isZero()) {
+            return;
+        }
+        try {
+            Thread.sleep(pauseBetweenBatches);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Ingestion interrupted", e);
         }
     }
 

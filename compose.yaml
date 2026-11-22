@@ -1,6 +1,5 @@
-# Local development stack. `mvn spring-boot:run` starts it automatically
-# (spring-boot-docker-compose). Ollama only starts with the "ollama" profile,
-# so you can use a native Ollama install instead.
+# Local development stack. `./mvnw spring-boot:run` starts it automatically
+# (spring-boot-docker-compose). Models run remotely (Gemini embeddings), not here.
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -13,14 +12,5 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-  ollama:
-    image: ollama/ollama:latest
-    profiles: ["ollama"]
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-
 volumes:
   pgdata:
-  ollama:

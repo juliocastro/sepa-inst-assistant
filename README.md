@@ -10,10 +10,9 @@ Ask a question about the scheme, for example *"When must the beneficiary PSP sen
 
 | Milestone | Scope | Status |
 | --- | --- | --- |
-| 1. Skeleton | Spring Boot + Spring AI, PostgreSQL/pgvector, Ollama, hexagonal layers, architecture tests, core use case with unit tests | Done |
+| 1. Skeleton | Spring Boot + Spring AI, PostgreSQL/pgvector, hexagonal layers, architecture tests, core use case with unit tests | Done |
 | 2. First ingestion | Download EPC documents, chunk by section, embed, store with metadata | Done |
-| 3. `/ask` v1 | Top-k retrieval + answer with sources (Ollama) | Next |
-| 4. Claude for answers | Hybrid: local embeddings, Claude for final answers | Planned |
+| 3. `/ask` v1 | Top-k retrieval + answer with sources (Claude) | Next |
 | 5. Evaluation | 20+ questions with expected answer and source, run in the build | Planned |
 | 6. Observability | Latency, token usage, retrieved chunks per answer | Planned |
 | Phase 2 | Reconciliation agent with tool calling and human approval | Planned |
@@ -55,25 +54,22 @@ Dependencies point inwards only: `adapter → application → domain`. The domai
 | Spring Boot 4.2 | REST API and operations (Actuator) |
 | Spring AI 2.1 | Chat, embeddings and vector store abstractions |
 | PostgreSQL + pgvector | Chunks, metadata and embeddings |
-| Ollama | Local models for embeddings and development |
+| Google Gemini (`gemini-embedding-001`) | Embeddings, 768 dimensions — hosted, nothing heavy runs locally |
+| Claude (Anthropic) | Answer generation (milestone 3) |
 | Testcontainers | Integration tests against a real pgvector database |
 
 ## Running locally
 
-Requirements: Java 21+ and Docker. Maven is provided by the wrapper (`./mvnw`).
+Requirements: Java 21+, Docker and a Gemini API key. Maven is provided by the wrapper (`./mvnw`).
 
 ```bash
-# 1. Ollama: either run it natively (https://ollama.com) or start it with Docker
-docker compose --profile ollama up -d ollama
+# 1. Get a free Gemini API key at https://aistudio.google.com and export it (never commit it)
+export GEMINI_API_KEY=your-key
 
-# 2. Pull the models (once)
-ollama pull nomic-embed-text      # embeddings (768 dimensions)
-ollama pull qwen3:8b              # chat; pick a smaller model if your machine needs it
-
-# 3. Run the app — PostgreSQL/pgvector is started automatically from compose.yaml
+# 2. Run the app — PostgreSQL/pgvector is started automatically from compose.yaml
 ./mvnw spring-boot:run
 
-# 4. Check it
+# 3. Check it
 curl http://localhost:8080/actuator/health
 ```
 
@@ -81,7 +77,7 @@ curl http://localhost:8080/actuator/health
 
 ```bash
 # Downloads the EPC documents listed in application.yaml (once), splits them by section,
-# embeds every chunk with Ollama and stores it in pgvector. Safe to run again.
+# embeds every chunk with Gemini and stores it in pgvector. Safe to run again.
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="--ingest=all --spring.main.web-application-type=none"
 ```
 
@@ -96,7 +92,7 @@ How the documents are chunked:
 
 Each chunk is stored with its document, section, page and a stable id, so re-ingesting overwrites instead of duplicating.
 
-Models and the Ollama URL can be changed with `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL`, `OLLAMA_EMBEDDING_MODEL` and `EMBEDDING_DIMENSIONS` (must match the embedding model).
+On the Gemini free tier, chunks are embedded in batches of 20 with a 30-second pause, to stay within the tokens-per-minute limit. With a paid key, raise `sepainst.ingestion.batch-size` and set `sepainst.ingestion.pause-between-batches` to `0s`. Changing `EMBEDDING_DIMENSIONS` requires re-creating the `vector_store` table and re-ingesting.
 
 ## Tests
 
@@ -112,7 +108,7 @@ Models and the Ollama URL can be changed with `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MO
 | `ArchitectureTest` | Architecture rules (ArchUnit) | Nothing |
 | `SepaInstAssistantApplicationTests` | Integration — app + real pgvector | Docker |
 
-Ollama is not needed for the tests. Without Docker, the integration test is skipped instead of failing.
+No API key is needed for the tests: no model is called. Without Docker, the integration test is skipped instead of failing.
 
 On Fedora with Podman instead of Docker:
 

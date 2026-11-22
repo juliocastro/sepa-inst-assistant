@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -26,7 +27,7 @@ class VectorStorePassageStoreTest {
 
     @Test
     void deletesPreviousChunksThenAddsTheNewOnesWithMetadata() {
-        new VectorStorePassageStore(vectorStore, 10).replace("IG", List.of(
+        new VectorStorePassageStore(vectorStore, 10, Duration.ZERO).replace("IG", List.of(
                 new DocumentChunk(0, "first", new SourceReference("Inter-PSP IG", "2.1 Scope", 7)),
                 new DocumentChunk(1, "second", new SourceReference("Inter-PSP IG", null, 8))));
 
@@ -61,8 +62,18 @@ class VectorStorePassageStoreTest {
                 .mapToObj(i -> new DocumentChunk(i, "chunk " + i, new SourceReference("IG", null, 1)))
                 .toList();
 
-        new VectorStorePassageStore(vectorStore, 10).replace("IG", chunks);
+        new VectorStorePassageStore(vectorStore, 10, Duration.ZERO).replace("IG", chunks);
 
         verify(vectorStore, times(3)).add(any());
+    }
+
+    @Test
+    void rejectsInvalidSettings() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> new VectorStorePassageStore(vectorStore, 0, Duration.ZERO))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> new VectorStorePassageStore(vectorStore, 10, Duration.ofSeconds(-1)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

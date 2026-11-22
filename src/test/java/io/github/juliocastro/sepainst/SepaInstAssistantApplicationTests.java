@@ -21,10 +21,12 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Milestone 1 smoke test: the application starts against a real PostgreSQL + pgvector,
  * the vector_store table is created and the health endpoint reports UP.
- * Ollama is not needed here: no embedding or chat call is made at startup.
+ * No model is called: nothing is embedded at startup, so no real API key is needed.
  */
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        // A dummy key lets the Gemini client be created; no embedding call is made in these tests.
+        properties = "spring.ai.google.genai.embedding.api-key=test-key")
 class SepaInstAssistantApplicationTests {
 
     @Container
