@@ -69,6 +69,53 @@ class SectionAwareChunkerTest {
     }
 
     @Test
+    void skipsTableOfContentsPagesWithoutDotLeaders() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(
+                new DocumentPage(1, """
+                        Table of contents
+                        2.8 DATASET FOR THE SCT INST TRANSACTION STATUS INVESTIGATION MESSAGE
+                        2.9 INTER-PSP REQUEST FOR RECALL BY THE ORIGINATOR PSP 48
+                        2.10 INTER-PSP NEGATIVE RESPONSE TO THE REQUEST FOR RECALL
+                        2.11 INTER-PSP POSITIVE RESPONSE TO THE REQUEST FOR RECALL
+                        3 LIST OF CHANGES IN THE SCT INST INTER-PSP IMPLEMENTATION GUIDELINES"""),
+                new DocumentPage(2, """
+                        1 Introduction
+                        This document sets out the rules.""")));
+
+        assertThat(chunks).singleElement().satisfies(chunk -> {
+            assertThat(chunk.source().section()).isEqualTo("1 Introduction");
+            assertThat(chunk.source().page()).isEqualTo(2);
+        });
+    }
+
+    @Test
+    void keepsAHeadingWithoutTextAsContextOfTheNextSection() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(
+                new DocumentPage(10, "2 Mandatory PSP-to-PSP Messages"),
+                new DocumentPage(11, """
+                        2.1 Inter-PSP Payment Dataset (DS-02)
+                        The pacs.008 message is used.""")));
+
+        assertThat(chunks).singleElement().satisfies(chunk -> {
+            assertThat(chunk.content()).isEqualTo(
+                    "2 Mandatory PSP-to-PSP Messages\n2.1 Inter-PSP Payment Dataset (DS-02)\nThe pacs.008 message is used.");
+            assertThat(chunk.source().section()).isEqualTo("2.1 Inter-PSP Payment Dataset (DS-02)");
+            assertThat(chunk.source().page()).isEqualTo(10);
+        });
+    }
+
+    @Test
+    void doesNotTakeIsoMessageElementRowsForHeadings() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(new DocumentPage(14, """
+                2.1 Inter-PSP Payment Dataset (DS-02)
+                1.13 1..1 FITo FICustomer Credit Transfer V08
+                2.38 1..1 FITo FICustomer Credit Transfer V08 SEPA Usage Rule(s)""")));
+
+        assertThat(chunks).singleElement()
+                .satisfies(chunk -> assertThat(chunk.source().section()).isEqualTo("2.1 Inter-PSP Payment Dataset (DS-02)"));
+    }
+
+    @Test
     void splitsLongSectionsAtLineBoundariesWithinTheLimit() {
         String line = "x".repeat(150);
         String text = "3 Long section\n" + String.join("\n", java.util.Collections.nCopies(10, line));

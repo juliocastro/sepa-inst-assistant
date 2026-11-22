@@ -103,8 +103,8 @@ Use `--ingest=<id>` for a single document. If the download is blocked, save the 
 How the documents are chunked:
 
 1. Running headers and footers repeated on most pages are removed.
-2. Table-of-contents lines (`2.1 Scope ........ 7`) are removed.
-3. Every numbered heading (`2.1.3 Title`) starts a new chunk, so a chunk never mixes two sections.
+2. Table-of-contents lines (`2.1 Scope ........ 7`) and table-of-contents pages are removed.
+3. Every numbered heading (`2.1.3 Title`) starts a new chunk, so a chunk never mixes two sections. A heading with no text of its own (`2 Messages` directly followed by `2.1 ...`) is kept as context at the top of the next chunk. ISO 20022 element rows (`2.38 1..1 ...`) are not mistaken for headings.
 4. Sections longer than 2,000 characters are split at line boundaries.
 
 Each chunk is stored with its document, section, page and a stable id, so re-ingesting overwrites instead of duplicating.

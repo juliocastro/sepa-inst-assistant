@@ -2,6 +2,11 @@ spring:
   application:
     name: sepa-inst-assistant
 
+  docker:
+    compose:
+      # Start the database if needed, but leave it running when the app stops (handy for psql).
+      lifecycle-management: start-only
+
   # Used when the database is started outside Spring Boot (e.g. `podman compose up -d`).
   # When Spring Boot starts compose.yaml itself, it overrides these automatically.
   datasource:
