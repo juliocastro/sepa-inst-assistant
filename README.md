@@ -73,6 +73,23 @@ export GEMINI_API_KEY=your-key
 curl http://localhost:8080/actuator/health
 ```
 
+### Using Podman instead of Docker
+
+Either give Podman a `docker` command (Spring Boot then manages `compose.yaml` as above):
+
+```bash
+sudo dnf install podman-docker docker-compose
+systemctl --user enable --now podman.socket
+export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock
+```
+
+or start the database yourself and tell Spring Boot not to:
+
+```bash
+podman compose up -d
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.docker.compose.enabled=false"
+```
+
 ### Ingesting the documents
 
 ```bash

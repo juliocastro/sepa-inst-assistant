@@ -2,6 +2,13 @@ spring:
   application:
     name: sepa-inst-assistant
 
+  # Used when the database is started outside Spring Boot (e.g. `podman compose up -d`).
+  # When Spring Boot starts compose.yaml itself, it overrides these automatically.
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/sepainst}
+    username: ${DATABASE_USERNAME:sepainst}
+    password: ${DATABASE_PASSWORD:sepainst}
+
   ai:
     model:
       embedding:
