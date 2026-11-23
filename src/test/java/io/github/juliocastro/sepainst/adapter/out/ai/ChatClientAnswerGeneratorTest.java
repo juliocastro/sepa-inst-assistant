@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 
+import io.github.juliocastro.sepainst.domain.model.GeneratedAnswer;
 import io.github.juliocastro.sepainst.domain.model.Passage;
 import io.github.juliocastro.sepainst.domain.model.Question;
 import io.github.juliocastro.sepainst.domain.model.SourceReference;
@@ -36,7 +37,19 @@ class ChatClientAnswerGeneratorTest {
     @Test
     void systemPromptRestrictsTheModelToThePassagesAndAsksForCitations() {
         assertThat(ChatClientAnswerGenerator.SYSTEM_PROMPT)
-                .contains("ONLY from the numbered passages", "say so plainly", "[1]");
+                .contains("ONLY from the numbered passages", "say so plainly", "[1]", "do not cite any passage");
+    }
+
+    @Test
+    void extractsCitationsInTheCommonFormats() {
+        assertThat(ChatClientAnswerGenerator.citations("See [1] and [2][3], also [4, 6] and [8-10]."))
+                .containsExactlyInAnyOrder(1, 2, 3, 4, 6, 8, 9, 10);
+        assertThat(ChatClientAnswerGenerator.citations("No citation here.")).isEmpty();
+    }
+
+    @Test
+    void doesNotTakeIsoCardinalitiesForCitations() {
+        assertThat(ChatClientAnswerGenerator.citations("The element is [1..1] and [0..n].")).isEmpty();
     }
 
     @Test
@@ -45,9 +58,10 @@ class ChatClientAnswerGeneratorTest {
         when(chatClient.prompt().system(anyString()).user(anyString()).call().content())
                 .thenReturn("  A negative pacs.002 is sent when... [1]  ");
 
-        String answer = new ChatClientAnswerGenerator(chatClient).generate(QUESTION, PASSAGES);
+        GeneratedAnswer answer = new ChatClientAnswerGenerator(chatClient).generate(QUESTION, PASSAGES);
 
-        assertThat(answer).isEqualTo("A negative pacs.002 is sent when... [1]");
+        assertThat(answer.text()).isEqualTo("A negative pacs.002 is sent when... [1]");
+        assertThat(answer.citations()).containsExactly(1);
     }
 
     @Test

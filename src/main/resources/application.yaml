@@ -58,6 +58,11 @@ sepainst:
       - id: EPC122-16-2025
         title: EPC122-16 SCT Inst Inter-PSP Implementation Guidelines 2025 v1.0
         url: https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-11/EPC122-16%20SCT%20Inst%20Inter-PSP%20IG%202025%20V1.0.pdf
+      # Business rules (who does what, when). Download the latest 2025 version manually from the
+      # page below and save it as sources/EPC004-16-2025.pdf — a local copy is always used first.
+      - id: EPC004-16-2025
+        title: EPC004-16 SCT Inst Scheme Rulebook 2025
+        url: https://www.europeanpaymentscouncil.eu/what-we-do/sepa-instant-credit-transfer
   ask:
     # Passages retrieved per question, and the minimum similarity (0-1) for a passage to be used.
     # Tune these with the evaluation set (milestone 5).

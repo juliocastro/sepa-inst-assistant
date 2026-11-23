@@ -116,6 +116,17 @@ class SectionAwareChunkerTest {
     }
 
     @Test
+    void doesNotTakeNumberedListItemsForHeadings() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(new DocumentPage(158, """
+                3 List of Changes
+                14. Note updated as follows (see bold text): CHANGE
+                15. Reason code added""")));
+
+        assertThat(chunks).singleElement()
+                .satisfies(chunk -> assertThat(chunk.source().section()).isEqualTo("3 List of Changes"));
+    }
+
+    @Test
     void splitsLongSectionsAtLineBoundariesWithinTheLimit() {
         String line = "x".repeat(150);
         String text = "3 Long section\n" + String.join("\n", java.util.Collections.nCopies(10, line));

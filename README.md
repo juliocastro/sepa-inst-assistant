@@ -89,7 +89,8 @@ How an answer is produced:
 1. The question is embedded and the 6 most similar chunks are retrieved from pgvector.
 2. Chunks below a minimum similarity (0.55) are discarded.
 3. If none is left, the API answers `"grounded": false` **without calling the model** — it never answers from the model's memory.
-4. Otherwise the model gets only those numbered passages, with instructions to answer from them alone, cite them and say so when they don't contain the answer.
+4. Otherwise the model gets only those numbered passages, with instructions to answer from them alone, cite them (`[1]`, `[2][3]`) and say so when they don't contain the answer.
+5. The response lists **only the passages the model cited**. An answer that cites nothing (e.g. "the passages do not say") is returned with `"grounded": false`.
 
 `sepainst.ask.top-k` and `sepainst.ask.min-score` are tuned with the evaluation set. The chat model can be changed with `GEMINI_CHAT_MODEL`.
 
@@ -120,11 +121,16 @@ podman compose up -d
 
 Use `--ingest=<id>` for a single document. If the download is blocked, save the PDF manually as `sources/<id>.pdf` — a local copy is always preferred over downloading.
 
+| Id | Document | What it answers | How to get it |
+| --- | --- | --- | --- |
+| `EPC122-16-2025` | SCT Inst Inter-PSP Implementation Guidelines 2025 | Message formats: pacs.008, pacs.002, camt.056... element by element | Downloaded automatically |
+| `EPC004-16-2025` | SCT Inst Scheme Rulebook 2025 | Business rules: who does what, when, time limits, reject reasons | Download the latest 2025 version from the [EPC SCT Inst page](https://www.europeanpaymentscouncil.eu/what-we-do/sepa-instant-credit-transfer) and save it as `sources/EPC004-16-2025.pdf` |
+
 How the documents are chunked:
 
 1. Running headers and footers repeated on most pages are removed.
 2. Table-of-contents lines (`2.1 Scope ........ 7`) and table-of-contents pages are removed.
-3. Every numbered heading (`2.1.3 Title`) starts a new chunk, so a chunk never mixes two sections. A heading with no text of its own (`2 Messages` directly followed by `2.1 ...`) is kept as context at the top of the next chunk. ISO 20022 element rows (`2.38 1..1 ...`) are not mistaken for headings.
+3. Every numbered heading (`2.1.3 Title`) starts a new chunk, so a chunk never mixes two sections. Numbered list items (`14. Note updated...`) are not headings. A heading with no text of its own (`2 Messages` directly followed by `2.1 ...`) is kept as context at the top of the next chunk. ISO 20022 element rows (`2.38 1..1 ...`) are not mistaken for headings.
 4. Sections longer than 2,000 characters are split at line boundaries.
 
 Each chunk is stored with its document, section, page and a stable id, so re-ingesting overwrites instead of duplicating.

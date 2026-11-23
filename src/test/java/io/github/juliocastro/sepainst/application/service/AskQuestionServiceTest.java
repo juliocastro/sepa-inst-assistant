@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.juliocastro.sepainst.application.port.out.AnswerGenerator;
 import io.github.juliocastro.sepainst.application.port.out.PassageRetriever;
 import io.github.juliocastro.sepainst.domain.model.Answer;
+import io.github.juliocastro.sepainst.domain.model.GeneratedAnswer;
 import io.github.juliocastro.sepainst.domain.model.Passage;
 import io.github.juliocastro.sepainst.domain.model.Question;
 import io.github.juliocastro.sepainst.domain.model.SourceReference;
@@ -28,13 +30,50 @@ class AskQuestionServiceTest {
                 new Passage("passage A", IG, 0.91),
                 new Passage("passage B", IG, 0.85),
                 new Passage("passage C", RULEBOOK, 0.80));
-        AnswerGenerator generator = (question, passages) -> "generated from " + passages.size() + " passages";
+        AnswerGenerator generator = (question, passages) ->
+                new GeneratedAnswer("generated from " + passages.size() + " passages", Set.of(1, 2, 3));
 
         Answer answer = new AskQuestionService(retriever, generator, 5, 0.7).ask(QUESTION);
 
         assertThat(answer.grounded()).isTrue();
         assertThat(answer.text()).isEqualTo("generated from 3 passages");
         assertThat(answer.sources()).containsExactly(IG, RULEBOOK);
+    }
+
+    @Test
+    void listsOnlyTheSourcesTheModelCited() {
+        PassageRetriever retriever = (question, max) -> List.of(
+                new Passage("passage A", IG, 0.91),
+                new Passage("passage B", RULEBOOK, 0.85));
+        AnswerGenerator generator = (question, passages) -> new GeneratedAnswer("answer [2]", Set.of(2));
+
+        Answer answer = new AskQuestionService(retriever, generator, 5, 0.7).ask(QUESTION);
+
+        assertThat(answer.grounded()).isTrue();
+        assertThat(answer.sources()).containsExactly(RULEBOOK);
+    }
+
+    @Test
+    void anAnswerThatCitesNothingIsNotGrounded() {
+        PassageRetriever retriever = (question, max) -> List.of(new Passage("passage A", IG, 0.91));
+        AnswerGenerator generator = (question, passages) ->
+                new GeneratedAnswer("The passages do not say when.", Set.of());
+
+        Answer answer = new AskQuestionService(retriever, generator, 5, 0.7).ask(QUESTION);
+
+        assertThat(answer.grounded()).isFalse();
+        assertThat(answer.text()).isEqualTo("The passages do not say when.");
+        assertThat(answer.sources()).isEmpty();
+    }
+
+    @Test
+    void ignoresCitationsOfPassagesThatDoNotExist() {
+        PassageRetriever retriever = (question, max) -> List.of(new Passage("passage A", IG, 0.91));
+        AnswerGenerator generator = (question, passages) -> new GeneratedAnswer("answer [1][7]", Set.of(1, 7));
+
+        Answer answer = new AskQuestionService(retriever, generator, 5, 0.7).ask(QUESTION);
+
+        assertThat(answer.sources()).containsExactly(IG);
     }
 
     @Test
@@ -45,7 +84,7 @@ class AskQuestionServiceTest {
         List<Passage> received = new ArrayList<>();
         AnswerGenerator generator = (question, passages) -> {
             received.addAll(passages);
-            return "answer";
+            return new GeneratedAnswer("answer [1]", Set.of(1));
         };
 
         Answer answer = new AskQuestionService(retriever, generator, 5, 0.7).ask(QUESTION);
@@ -76,7 +115,7 @@ class AskQuestionServiceTest {
             return List.of();
         };
 
-        new AskQuestionService(retriever, (q, p) -> "unused", 7, 0.7).ask(QUESTION);
+        new AskQuestionService(retriever, (q, p) -> new GeneratedAnswer("unused", Set.of()), 7, 0.7).ask(QUESTION);
 
         assertThat(requested).containsExactly(7);
     }
@@ -84,7 +123,7 @@ class AskQuestionServiceTest {
     @Test
     void rejectsInvalidConfiguration() {
         PassageRetriever retriever = (question, max) -> List.of();
-        AnswerGenerator generator = (question, passages) -> "";
+        AnswerGenerator generator = (question, passages) -> new GeneratedAnswer("", Set.of());
 
         assertThatThrownBy(() -> new AskQuestionService(retriever, generator, 0, 0.7))
                 .isInstanceOf(IllegalArgumentException.class);

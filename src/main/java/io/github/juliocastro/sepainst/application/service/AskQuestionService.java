@@ -7,6 +7,7 @@ import io.github.juliocastro.sepainst.application.port.in.AskQuestionUseCase;
 import io.github.juliocastro.sepainst.application.port.out.AnswerGenerator;
 import io.github.juliocastro.sepainst.application.port.out.PassageRetriever;
 import io.github.juliocastro.sepainst.domain.model.Answer;
+import io.github.juliocastro.sepainst.domain.model.GeneratedAnswer;
 import io.github.juliocastro.sepainst.domain.model.Passage;
 import io.github.juliocastro.sepainst.domain.model.Question;
 import io.github.juliocastro.sepainst.domain.model.SourceReference;
@@ -15,6 +16,9 @@ import io.github.juliocastro.sepainst.domain.model.SourceReference;
  * Retrieval-augmented answering: retrieve the most relevant passages, discard weak matches and
  * only then ask the generator. When nothing relevant is found, the assistant says so instead of
  * letting the model answer from memory.
+ *
+ * <p>An answer is grounded only if the model cites at least one passage, and its sources are the
+ * cited passages only — not everything that was retrieved.
  */
 public class AskQuestionService implements AskQuestionUseCase {
 
@@ -49,12 +53,16 @@ public class AskQuestionService implements AskQuestionUseCase {
             return Answer.notFound();
         }
 
-        String text = generator.generate(question, relevant);
-        List<SourceReference> sources = relevant.stream()
-                .map(Passage::source)
+        GeneratedAnswer generated = generator.generate(question, relevant);
+        List<SourceReference> sources = generated.citations().stream()
+                .filter(number -> number >= 1 && number <= relevant.size())
+                .sorted()
+                .map(number -> relevant.get(number - 1).source())
                 .distinct()
                 .toList();
 
-        return Answer.grounded(text, sources);
+        return sources.isEmpty()
+                ? new Answer(generated.text(), List.of(), false)
+                : Answer.grounded(generated.text(), sources);
     }
 }

@@ -33,9 +33,12 @@ import io.github.juliocastro.sepainst.domain.model.SourceReference;
  */
 public class SectionAwareChunker {
 
-    /** "2", "2.1", "2.1.3" or "2.1.3.4" followed by a title that starts with a letter. */
+    /**
+     * "2", "2.1", "2.1.3" or "2.1.3.4" followed by a title that starts with a capital letter.
+     * A dot right after the number ("14. Note updated...") marks a numbered list item, not a heading.
+     */
     private static final Pattern HEADING =
-            Pattern.compile("^(\\d{1,2}(?:\\.\\d{1,3}){0,4})\\.?\\s+(\\p{Lu}[^.]{2,120})$");
+            Pattern.compile("^(\\d{1,2}(?:\\.\\d{1,3}){0,4})\\s+(\\p{Lu}[^.]{2,120})$");
     private static final Pattern TOC_LINE = Pattern.compile(".*\\.{5,}\\s*\\d+\\s*$");
     /** A numbered title of any case, as listed in a table of contents (optionally with a page number). */
     private static final Pattern NUMBERED_TITLE = Pattern.compile("^\\d{1,2}(?:\\.\\d{1,3}){0,4}\\.?\\s+\\p{L}.*");
