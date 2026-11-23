@@ -120,10 +120,37 @@ class SectionAwareChunkerTest {
         List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(new DocumentPage(158, """
                 3 List of Changes
                 14. Note updated as follows (see bold text): CHANGE
+                4.7 FITo FIPayment SEPA Usage Rule updated as follows: CHANGE
                 15. Reason code added""")));
 
         assertThat(chunks).singleElement()
                 .satisfies(chunk -> assertThat(chunk.source().section()).isEqualTo("3 List of Changes"));
+    }
+
+    @Test
+    void doesNotTakeFootnotesForChapterHeadings() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(
+                new DocumentPage(29, """
+                        4 Rights and Obligations
+                        4.2.3 Maximum Execution Time
+                        Within 7 seconds after the Time Stamp the confirmation must reach the CSM.
+                        14 Barring any planned maintenance or planned downtime for such services"""),
+                new DocumentPage(30, """
+                        The Originator PSP must maintain the settlement certainty.
+                        5 Rights and Obligations of Participants
+                        Participants must comply.""")));
+
+        assertThat(chunks).extracting(chunk -> chunk.source().section())
+                .containsExactly("4.2.3 Maximum Execution Time", "5 Rights and Obligations of Participants");
+        assertThat(chunks.get(0).content()).contains("14 Barring any planned maintenance", "settlement certainty");
+    }
+
+    @Test
+    void normalizesSpacesInSectionNames() {
+        List<DocumentChunk> chunks = chunker.chunk(DOC, List.of(new DocumentPage(6, "0.1       References\nSome text.")));
+
+        assertThat(chunks).singleElement()
+                .satisfies(chunk -> assertThat(chunk.source().section()).isEqualTo("0.1 References"));
     }
 
     @Test

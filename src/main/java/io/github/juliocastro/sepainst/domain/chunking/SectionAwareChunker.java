@@ -24,6 +24,9 @@ import io.github.juliocastro.sepainst.domain.model.SourceReference;
  *       "... Version 1.0 Approved Page 12") are removed.</li>
  *   <li>Table-of-contents lines ("2.1 Scope ........ 7") are removed, and so are whole pages made
  *       mostly of numbered headings (a table of contents without dot leaders).</li>
+ *   <li>Chapter numbers only move forward: in chapter 4, "14 Barring any planned maintenance..."
+ *       is a footnote, not chapter 14. After the first heading, a heading is accepted only in the
+ *       current chapter or the next one.</li>
  *   <li>A numbered heading always starts a new chunk, so a chunk never mixes two sections.
  *       A heading with no text of its own (e.g. "2 Messages" directly followed by "2.1 ...")
  *       is kept as context at the top of the next section's chunk.</li>
@@ -35,14 +38,16 @@ public class SectionAwareChunker {
 
     /**
      * "2", "2.1", "2.1.3" or "2.1.3.4" followed by a title that starts with a capital letter.
-     * A dot right after the number ("14. Note updated...") marks a numbered list item, not a heading.
+     * A dot right after the number ("14. Note updated...") marks a numbered list item, not a heading,
+     * and a colon in the title ("4.7 ... updated as follows: CHANGE") marks a change-log entry.
      */
     private static final Pattern HEADING =
-            Pattern.compile("^(\\d{1,2}(?:\\.\\d{1,3}){0,4})\\s+(\\p{Lu}[^.]{2,120})$");
+            Pattern.compile("^(\\d{1,2}(?:\\.\\d{1,3}){0,4})\\s+(\\p{Lu}[^.:]{2,120})$");
     private static final Pattern TOC_LINE = Pattern.compile(".*\\.{5,}\\s*\\d+\\s*$");
     /** A numbered title of any case, as listed in a table of contents (optionally with a page number). */
     private static final Pattern NUMBERED_TITLE = Pattern.compile("^\\d{1,2}(?:\\.\\d{1,3}){0,4}\\.?\\s+\\p{L}.*");
     private static final Pattern DIGITS = Pattern.compile("\\d+");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     private static final double REPEATED_LINE_PAGE_RATIO = 0.5;
     private static final int MIN_PAGES_FOR_REPEATED_LINE_DETECTION = 3;
@@ -64,6 +69,7 @@ public class SectionAwareChunker {
 
         Set<String> repeatedLines = repeatedLines(pages);
         Builder builder = new Builder(document);
+        int chapter = -1;
 
         for (DocumentPage page : pages) {
             List<String> lines = contentLines(page, repeatedLines);
@@ -75,7 +81,8 @@ public class SectionAwareChunker {
                     continue;
                 }
                 Matcher heading = HEADING.matcher(line);
-                if (heading.matches()) {
+                if (heading.matches() && followsChapterOrder(chapter, chapterOf(heading))) {
+                    chapter = chapterOf(heading);
                     builder.startSection(line, page.number());
                     builder.append(line, page.number(), true);
                 } else {
@@ -85,6 +92,17 @@ public class SectionAwareChunker {
         }
         builder.flush();
         return builder.chunks;
+    }
+
+    private static int chapterOf(Matcher heading) {
+        String number = heading.group(1);
+        int dot = number.indexOf('.');
+        return Integer.parseInt(dot < 0 ? number : number.substring(0, dot));
+    }
+
+    /** Footnotes and stray numbered lines break the chapter sequence; real headings do not. */
+    private static boolean followsChapterOrder(int currentChapter, int candidate) {
+        return currentChapter < 0 || candidate == currentChapter || candidate == currentChapter + 1;
     }
 
     private static List<String> contentLines(DocumentPage page, Set<String> repeatedLines) {
@@ -154,7 +172,8 @@ public class SectionAwareChunker {
             if (hasBody) {
                 flush();
             }
-            section = heading;
+            // PDF text often pads the gap between number and title: "0.1       References".
+            section = WHITESPACE.matcher(heading).replaceAll(" ");
             if (text.length() == 0) {
                 startPage = page;
             }
