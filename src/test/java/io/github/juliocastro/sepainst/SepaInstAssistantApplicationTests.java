@@ -25,8 +25,9 @@ import org.testcontainers.utility.DockerImageName;
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        // A dummy key lets the Gemini client be created; no embedding call is made in these tests.
-        properties = "spring.ai.google.genai.embedding.api-key=test-key")
+        // Dummy keys let the Gemini clients be created; no model is called in these tests.
+        properties = {"spring.ai.google.genai.api-key=test-key",
+                      "spring.ai.google.genai.embedding.api-key=test-key"})
 class SepaInstAssistantApplicationTests {
 
     @Container
@@ -56,5 +57,31 @@ class SepaInstAssistantApplicationTests {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).contains("\"status\":\"UP\"");
+    }
+
+    @Test
+    void askRejectsABlankQuestionWithAProblemDetail() throws Exception {
+        HttpResponse<String> response = postAsk("{\"question\": \"   \"}");
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(
+                type -> assertThat(type).contains("application/problem+json"));
+        assertThat(response.body()).contains("question must not be blank");
+    }
+
+    @Test
+    void askRejectsMalformedJson() throws Exception {
+        HttpResponse<String> response = postAsk("{not json");
+
+        assertThat(response.statusCode()).isEqualTo(400);
+    }
+
+    private HttpResponse<String> postAsk(String body) throws Exception {
+        return HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/ask"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
     }
 }

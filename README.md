@@ -12,8 +12,8 @@ Ask a question about the scheme, for example *"When must the beneficiary PSP sen
 | --- | --- | --- |
 | 1. Skeleton | Spring Boot + Spring AI, PostgreSQL/pgvector, hexagonal layers, architecture tests, core use case with unit tests | Done |
 | 2. First ingestion | Download EPC documents, chunk by section, embed, store with metadata | Done |
-| 3. `/ask` v1 | Top-k retrieval + answer with sources (Claude) | Next |
-| 5. Evaluation | 20+ questions with expected answer and source, run in the build | Planned |
+| 3. `/ask` v1 | Top-k retrieval + answer with sources (Gemini) | Done |
+| 5. Evaluation | 20+ questions with expected answer and source; compare Gemini and Claude | Next |
 | 6. Observability | Latency, token usage, retrieved chunks per answer | Planned |
 | Phase 2 | Reconciliation agent with tool calling and human approval | Planned |
 
@@ -39,7 +39,7 @@ io.github.juliocastro.sepainst
 │   └── service/            Use case implementations (plain Java)
 ├── adapter/                Technology at the edges
 │   ├── in/cli/             --ingest command
-│   ├── in/web/             REST API                          (milestone 3)
+│   ├── in/web/             REST API: POST /ask, problem-detail errors
 │   ├── out/ai/             Spring AI: pgvector storage, search, LLM
 │   └── out/document/       Source catalog, HTTPS download, PDF reading (PDFBox)
 └── config/                 Spring wiring — the only place services meet adapters
@@ -55,7 +55,7 @@ Dependencies point inwards only: `adapter → application → domain`. The domai
 | Spring AI 2.1 | Chat, embeddings and vector store abstractions |
 | PostgreSQL + pgvector | Chunks, metadata and embeddings |
 | Google Gemini (`gemini-embedding-001`) | Embeddings, 768 dimensions — hosted, nothing heavy runs locally |
-| Claude (Anthropic) | Answer generation (milestone 3) |
+| Google Gemini (`gemini-3.8-flash`) | Answer generation, only from the retrieved passages |
 | Testcontainers | Integration tests against a real pgvector database |
 
 ## Running locally
@@ -72,6 +72,26 @@ export GEMINI_API_KEY=your-key
 # 3. Check it
 curl http://localhost:8080/actuator/health
 ```
+
+### Asking a question
+
+```bash
+./mvnw spring-boot:run      # with GEMINI_API_KEY exported
+
+curl -s -X POST localhost:8080/ask -H 'Content-Type: application/json' \
+  -d '{"question": "When must the beneficiary PSP send a negative pacs.002?"}'
+```
+
+The response carries the answer, whether it is grounded in the documents, and its sources (document, section, page).
+
+How an answer is produced:
+
+1. The question is embedded and the 6 most similar chunks are retrieved from pgvector.
+2. Chunks below a minimum similarity (0.55) are discarded.
+3. If none is left, the API answers `"grounded": false` **without calling the model** — it never answers from the model's memory.
+4. Otherwise the model gets only those numbered passages, with instructions to answer from them alone, cite them and say so when they don't contain the answer.
+
+`sepainst.ask.top-k` and `sepainst.ask.min-score` are tuned with the evaluation set. The chat model can be changed with `GEMINI_CHAT_MODEL`.
 
 ### Using Podman instead of Docker
 
@@ -121,9 +141,9 @@ On the Gemini free tier, chunks are embedded in batches of 20 with a 30-second p
 | --- | --- | --- |
 | `AskQuestionServiceTest`, `IngestDocumentServiceTest` | Unit — use cases with fake ports | Nothing |
 | `SectionAwareChunkerTest` | Unit — chunking rules | Nothing |
-| `HttpDocumentFetcherTest`, `PdfBoxDocumentReaderTest`, `VectorStorePassageStoreTest`, ... | Adapter tests (local HTTP server, generated PDFs, mocked vector store) | Nothing |
+| `HttpDocumentFetcherTest`, `PdfBoxDocumentReaderTest`, `VectorStorePassageStoreTest`, `ChatClientAnswerGeneratorTest`, `AskControllerTest`, ... | Adapter tests (local HTTP server, generated PDFs, mocked vector store and model) | Nothing |
 | `ArchitectureTest` | Architecture rules (ArchUnit) | Nothing |
-| `SepaInstAssistantApplicationTests` | Integration — app + real pgvector | Docker |
+| `SepaInstAssistantApplicationTests` | Integration — app + real pgvector, `/ask` validation over HTTP | Docker |
 
 No API key is needed for the tests: no model is called. Without Docker, the integration test is skipped instead of failing.
 

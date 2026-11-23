@@ -16,12 +16,16 @@ spring:
 
   ai:
     model:
+      chat: google-genai
       embedding:
         text: google-genai
     google:
       genai:
+        # Free or paid key from Google AI Studio (https://aistudio.google.com). Never commit it.
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          model: ${GEMINI_CHAT_MODEL:gemini-3.8-flash}
         embedding:
-          # Free key from Google AI Studio (https://aistudio.google.com). Never commit it.
           api-key: ${GEMINI_API_KEY:}
           text:
             model: gemini-embedding-001
@@ -54,6 +58,11 @@ sepainst:
       - id: EPC122-16-2025
         title: EPC122-16 SCT Inst Inter-PSP Implementation Guidelines 2025 v1.0
         url: https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-11/EPC122-16%20SCT%20Inst%20Inter-PSP%20IG%202025%20V1.0.pdf
+  ask:
+    # Passages retrieved per question, and the minimum similarity (0-1) for a passage to be used.
+    # Tune these with the evaluation set (milestone 5).
+    top-k: 6
+    min-score: 0.55
   ingestion:
     max-chunk-chars: 2000
     # Gemini free tier allows about 30k tokens per minute: ~20 chunks of 2,000 characters,

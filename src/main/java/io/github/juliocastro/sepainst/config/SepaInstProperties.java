@@ -10,7 +10,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /** Application settings under the {@code sepainst} prefix. */
 @ConfigurationProperties("sepainst")
-public record SepaInstProperties(@DefaultValue Sources sources, @DefaultValue Ingestion ingestion) {
+public record SepaInstProperties(@DefaultValue Sources sources, @DefaultValue Ingestion ingestion,
+                                 @DefaultValue Ask ask) {
 
     /**
      * @param directory local folder for downloaded documents (git-ignored)
@@ -20,6 +21,13 @@ public record SepaInstProperties(@DefaultValue Sources sources, @DefaultValue In
     }
 
     public record Document(String id, String title, URI url) {
+    }
+
+    /**
+     * @param topK     passages retrieved per question
+     * @param minScore minimum similarity (0-1) for a passage to be given to the model
+     */
+    public record Ask(@DefaultValue("6") int topK, @DefaultValue("0.55") double minScore) {
     }
 
     /**
